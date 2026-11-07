@@ -1,0 +1,58 @@
+{
+  "name": "botairdrop",
+  "version": "1.0.0",
+  "description": "Multi-Agent System for Solana Airdrop Farming, NFT Sniping, and Stealth Operations",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest",
+    "test:unit": "jest --testPathPattern=unit",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:e2e": "jest --testPathPattern=e2e",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write src/**/*.ts",
+    "format:check": "prettier --check src/**/*.ts"
+  },
+  "keywords": [
+    "solana",
+    "blockchain",
+    "nft",
+    "airdrop",
+    "bot",
+    "multi-agent",
+    "anti-sybil",
+    "stealth"
+  ],
+  "author": "mohamedazooz",
+  "license": "MIT",
+  "dependencies": {
+    "@metaplex-foundation/metaplex": "^0.18.0",
+    "@metaplex-foundation/mpl-candy-machine-core": "^0.1.0",
+    "@solana/web3.js": "^1.78.0",
+    "axios": "^1.6.0",
+    "https-proxy-agent": "^7.0.0",
+    "puppeteer": "^21.0.0",
+    "2captcha": "^1.2.0",
+    "capsolver": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/jest": "^29.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "jest": "^29.0.0",
+    "prettier": "^3.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
