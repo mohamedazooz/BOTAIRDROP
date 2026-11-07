@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  # HFT Bot Service
+  hft-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: hft
+    container_name: botairdrop-hft
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - HFT_ENVIRONMENT=production
+      - HFT_LOGGING_LEVEL=info
+      - HFT_LOGGING_FORMAT=json
+      - HFT_LOGGING_OUTPUT=console
+      - HFT_JITO_ENABLED=true
+      - HFT_JITO_RPC_URL=https://jito-rpc.com
+      - HFT_JITO_MIN_TIP_LAMPORTS=1000
+      - HFT_JITO_MAX_TIP_LAMPORTS=100000
+      - HFT_PRIORITY_FEE_BASE_LAMPORTS=5000
+      - HFT_PRIORITY_FEE_DYNAMIC_MULTIPLIER=1.5
+      - HFT_PRIORITY_FEE_MAX_LAMPORTS=1000000
+      - HFT_SLIPPAGE_TOLERANCE=0.01
+      - HFT_MAX_CONCURRENT_STRATEGIES=10
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+    networks:
+      - hft-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('./dist/src/hft/index.js').getHFTSystem().getStatus().isRunning"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Prometheus for Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: botairdrop-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - hft-network
+
+  # Grafana for Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: botairdrop-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    networks:
+      - hft-network
+    depends_on:
+      - prometheus
+
+  # Redis for Caching (Optional)
+  redis:
+    image: redis:alpine
+    container_name: botairdrop-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - hft-network
+
+  # PostgreSQL for Data Storage (Optional)
+  postgres:
+    image: postgres:15-alpine
+    container_name: botairdrop-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=hft
+      - POSTGRES_PASSWORD=hft_password
+      - POSTGRES_DB=hft_db
+    networks:
+      - hft-network
+
+  # ClickHouse for Time-Series Data (Optional)
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: botairdrop-clickhouse
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=hft
+      - CLICKHOUSE_USER=hft
+      - CLICKHOUSE_PASSWORD=hft_password
+    networks:
+      - hft-network
+
+  # Node Exporter for System Metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: botairdrop-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--collector.filesystem.ignored-fs-types=^(autofs|binfmt_misc|cgroup|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|nfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|sysfs|tracefs)$'
+    networks:
+      - hft-network
+
+networks:
+  hft-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  redis-data:
+  postgres-data:
+  clickhouse-data:
