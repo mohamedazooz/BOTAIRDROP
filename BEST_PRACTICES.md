@@ -99,11 +99,16 @@
 - **DON'T**: Ignore program errors
 
 ### Jito Bundles
-- **DO**: Use Jito for priority transactions
-- **DO**: Set appropriate tip lamports
+- **DO**: Use Jito for priority transactions (especially NFT sniping)
+- **DO**: Set minimum tip of 1000 lamports for bundles (Jito requirement)
+- **DO**: Use random tip accounts from Jito's 8 static tip accounts
+- **DO**: Split budget: 70% priority fee, 30% Jito tip for single transactions
+- **DO**: For bundles (up to 5 tx), only the tip matters for priority
 - **DO**: Implement bundle timeout
 - **DON'T**: Use Jito for all transactions (costly)
 - **DON'T**: Set excessive tips
+- **DON'T**: Hardcode a single tip account (use random selection)
+- **DON'T**: Use Address Lookup Tables for tip accounts
 
 ### Candy Machine
 - **DO**: Monitor candy machine state
