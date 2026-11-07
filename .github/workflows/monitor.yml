@@ -1,0 +1,76 @@
+name: BOTAIRDROP Monitoring
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Every 15 minutes
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run health check
+        run: node dist/scripts/health-check.js
+        env:
+          RPC_URL: ${{ secrets.RPC_URL }}
+          PROXY_HOST: ${{ secrets.PROXY_HOST }}
+          PROXY_PORT: ${{ secrets.PROXY_PORT }}
+
+  uptime-monitor:
+    name: Uptime Monitor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check RPC endpoints
+        run: |
+          endpoints=(
+            "https://api.mainnet-beta.solana.com"
+            "https://solana-api.projectserum.com"
+            "https://rpc.ankr.com/solana"
+          )
+          
+          for endpoint in "${endpoints[@]}"; do
+            echo "Checking $endpoint..."
+            response=$(curl -s -o /dev/null -w "%{http_code}" "$endpoint")
+            if [ "$response" -eq 200 ]; then
+              echo "✓ $endpoint is up"
+            else
+              echo "✗ $endpoint is down (HTTP $response)"
+            fi
+          done
+
+  proxy-monitor:
+    name: Proxy Monitor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check proxy health
+        run: |
+          # Read proxies from config
+          proxies=$(jq -r '.[] | .host + ":" + (.port | tostring)' src/config/proxies.json)
+          
+          for proxy in $proxies; do
+            echo "Checking proxy $proxy..."
+            response=$(timeout 5 curl -x "http://$proxy" -s -o /dev/null -w "%{http_code}" https://httpbin.org/ip 2>/dev/null || echo "TIMEOUT")
+            if [ "$response" = "200" ]; then
+              echo "✓ Proxy $proxy is working"
+            else
+              echo "✗ Proxy $proxy failed (Response: $response)"
+            fi
+          done

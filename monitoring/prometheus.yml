@@ -1,0 +1,134 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+rule_files:
+  - "alert.rules"
+
+scrape_configs:
+  # Monitor BOTAIRDROP service
+  - job_name: 'botairdrop'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['botairdrop-main:3000']
+        labels:
+          service: 'botairdrop'
+          component: 'main'
+
+  # Monitor individual wallets (if exposed)
+  - job_name: 'botairdrop-wallets'
+    scrape_interval: 15s
+    static_configs:
+      - targets: []
+        labels:
+          service: 'botairdrop'
+          component: 'wallet'
+
+  # Monitor Node.js metrics
+  - job_name: 'node-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node-exporter'
+
+  # Monitor Docker containers
+  - job_name: 'docker'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['docker-exporter:9321']
+        labels:
+          service: 'docker'
+
+# Alert rules
+alert:
+  rules:
+    - alert: BOTAIRDROP_Down
+      expr: up{job="botairdrop"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "BOTAIRDROP service is down"
+        description: "BOTAIRDROP main service has been down for more than 1 minute"
+
+    - alert: High_Transaction_Failure_Rate
+      expr: rate(wallet_failures_total[5m]) / rate(wallet_transactions_total[5m]) > 0.5
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High transaction failure rate"
+        description: "More than 50% of wallet transactions are failing"
+
+    - alert: Low_Mint_Success_Rate
+      expr: rate(mint_failures_total[5m]) / rate(mint_attempts_total[5m]) > 0.3
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Low NFT mint success rate"
+        description: "More than 30% of NFT mint attempts are failing"
+
+    - alert: High_Latency
+      expr: histogram_quantile(0.95, sum(rate(transaction_latency_seconds_bucket[5m])) by (le)) > 10
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High transaction latency"
+        description: "95th percentile transaction latency is above 10 seconds"
+
+    - alert: RPC_Endpoint_Failing
+      expr: rate(rpc_errors_total[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "RPC endpoint errors"
+        description: "RPC endpoint is experiencing errors"
+
+    - alert: Proxy_Failing
+      expr: rate(proxy_errors_total[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Proxy errors"
+        description: "Proxy is experiencing errors"
+
+    - alert: High_Memory_Usage
+      expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage"
+        description: "Memory usage is above 90%"
+
+    - alert: High_CPU_Usage
+      expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100) > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage"
+        description: "CPU usage is above 90%"
+
+    - alert: Container_Restart
+      expr: increase(container_restarts_total[1h]) > 0
+      labels:
+        severity: warning
+      annotations:
+        summary: "Container restarted"
+        description: "One or more containers have restarted in the last hour"
+
+    - alert: Disk_Space_Low
+      expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100 < 20
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Low disk space"
+        description: "Less than 20% disk space available on root filesystem"
